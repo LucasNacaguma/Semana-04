@@ -103,3 +103,14 @@ dot.edge('FatoVendas:fk_produto', 'DimProduto:pk_produto', label='1:N')
 
 # 5. Renderiza a imagem e salva como 'modelo_vendas.png'
 dot.render('modelo_vendas', format='png')
+
+## 5. Glossário
+
+Para facilitar os estudos, aqui está o resumo dos termos técnicos mais importantes da semana:
+
+* **Data Warehouse (DW):** Repositório central de dados estruturados focado em consultas e análises (Analytics).
+* **Desnormalização:** Estratégia de modelagem de dados onde regras estritas são afrouxadas para adicionar dados redundantes em uma tabela, visando diminuir a quantidade de `JOINs` e acelerar consultas de leitura.
+* **Granularidade:** O nível de detalhe que uma única linha de uma Tabela Fato representa. (ex: Uma linha é a soma das vendas do dia todo? Ou uma linha é um único item passando no caixa?). Quanto mais detalhado, maior a granularidade.
+* **Join:** Operação utilizada em bancos de dados relacionais para combinar registros de duas ou mais tabelas baseadas em uma coluna comum entre elas (geralmente PK e FK).
+* **Normalização:** O processo de organizar dados em um banco relacional para reduzir redundâncias e garantir a integridade dos dados (evitando anomalias de atualização ou exclusão).
+* **Surrogate Key (Chave Substituta):** Uma chave primária artificial, geralmente um número inteiro sequencial gerado pelo banco de dados, muito usada em Tabelas Dimensão em vez de chaves naturais (como CPFs ou códigos de produto legados).
