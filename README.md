@@ -103,6 +103,7 @@ dot.edge('FatoVendas:fk_produto', 'DimProduto:pk_produto', label='1:N')
 
 # 5. Renderiza a imagem e salva como 'modelo_vendas.png'
 dot.render('modelo_vendas', format='png')
+```
 
 ## 5. Glossário
 
