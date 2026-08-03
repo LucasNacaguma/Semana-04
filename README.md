@@ -1,93 +1,105 @@
-# Semana 4 — Modelagem de Dados
+# Semana 4 — Modelagem de Dados: Do Transacional ao Analítico
 
-Nesta semana, o objetivo é compreender como estruturar dados saindo das regras de negócio até o banco de dados físico, e diferenciar modelos otimizados para transações daqueles voltados para análise. Além da teoria, a prática consiste em desenhar modelos para um domínio simples de e-commerce utilizando código.
+Nesta semana, o objetivo é compreender a jornada do dado desde a sua captura nas aplicações operacionais até a sua estruturação para análises de negócios. A modelagem de dados não é uma ciência exata de tamanho único; ela muda drasticamente dependendo de **como** os dados serão consumidos. 
+
+Além da teoria estrutural, a prática consiste em desenhar modelos para um domínio de e-commerce utilizando "Diagramas como Código".
 
 ## Objetivos de aprendizagem
 
-Ao final da semana, espera-se que você consiga:
-
-- diferenciar sistemas OLTP de sistemas OLAP;
-- identificar e aplicar os elementos principais de um diagrama ER (Entidade-Relacionamento);
-- mapear um modelo relacional para um banco de dados físico;
-- entender o propósito da modelagem dimensional para o mundo de *Analytics*;
-- classificar e criar tabelas fato e tabelas dimensão;
-- desenhar um Esquema Estrela (*Star Schema*);
-- gerar representações visuais dos modelos utilizando a biblioteca `graphviz` em Python.
+- Diferenciar a arquitetura e os objetivos de sistemas OLTP e OLAP.
+- Compreender os fundamentos da Modelagem Entidade-Relacionamento (ER).
+- Dominar os conceitos de Chaves (Primária, Estrangeira e Surrogate).
+- Entender o propósito da modelagem dimensional (Data Warehouses).
+- Classificar, projetar e relacionar Tabelas Fato e Tabelas Dimensão.
+- Diferenciar os esquemas Estrela (*Star Schema*) e Floco de Neve (*Snowflake*).
+- Gerar representações visuais dos modelos utilizando a biblioteca `graphviz` em Python.
 
 ---
 
-## 1. OLTP vs. OLAP
+## 1. O Ciclo de Vida do Dado: OLTP vs. OLAP
 
-Antes de modelar, precisamos entender o propósito do banco de dados. A modelagem muda drasticamente dependendo de como os dados serão consumidos.
+Antes de desenhar qualquer tabela, o engenheiro de dados precisa perguntar: *"Esse banco vai suportar o aplicativo rodando em tempo real ou vai suportar o painel do time de negócios?"*
 
-| Característica | OLTP (Sistemas Transacionais) | OLAP (Sistemas Analíticos) |
+| Característica | OLTP (Online Transaction Processing) | OLAP (Online Analytical Processing) |
 |---|---|---|
-| **Foco** | Inserção, atualização e exclusão rápida. | Leitura rápida e agregação de grandes volumes. |
-| **Modelagem** | Relacional (Diagrama ER). Altamente normalizado. | Dimensional (Esquema Estrela). Desnormalizado. |
-| **Usuário final**| Aplicações, clientes do sistema. | Analistas de dados, Cientistas de dados, BI. |
+| **Objetivo** | Processar transações diárias do negócio. | Suportar tomada de decisão e BI. |
+| **Padrão de Leitura** | Lê e escreve poucas linhas por vez. | Lê milhões de linhas simultaneamente. |
+| **Modelagem** | Relacional (Diagrama ER). Altamente normalizado (evita redundância). | Dimensional (Fato/Dimensão). Desnormalizado (aceita redundância para ganhar velocidade). |
+| **Métrica de Sucesso**| Velocidade de *Insert/Update*, integridade do dado. | Velocidade de resposta para *Queries* complexas (Agregações, `GROUP BY`). |
+
+> **O Elo de Ligação:** Os dados nascem no OLTP (ex: o banco do aplicativo da loja). Para chegarem ao OLAP (o Data Warehouse), eles passam por processos de Extração, Transformação e Carga (Pipelines de **ETL/ELT**).
 
 ## 2. Modelagem Entidade-Relacionamento (ER)
 
-Focada em sistemas OLTP, tudo começa com o entendimento das regras de negócio. O modelo conceitual foca no "O QUÊ" (alto nível), enquanto o modelo lógico foca no "COMO" (detalhamento técnico independente do banco).
+Focada no mundo OLTP, a modelagem ER garante que o banco de dados seja um reflexo fiel das regras de negócio. 
 
-Os elementos fundamentais incluem:
-- **Entidades:** Representam os objetos do mundo real (ex: Cliente, Produto).
-- **Atributos:** As características das entidades (ex: Nome, Preço).
-- **Relacionamentos:** Como as entidades interagem (ex: Cliente 'realiza' Pedido). Podem ter cardinalidades como 1:1, 1:N (Um para Muitos) ou N:M (Muitos para Muitos).
+### Elementos Fundamentais
+* **Entidades:** Objetos de negócio sobre os quais queremos guardar dados (ex: `Cliente`, `Pedido`).
+* **Atributos:** Detalhes das entidades (ex: `Nome`, `CPF`, `Data_Compra`).
+* **Relacionamentos e Cardinalidade:** Como as entidades interagem. 
+  * **1:1 (Um para Um):** Um usuário tem um único carrinho de compras ativo.
+  * **1:N (Um para Muitos):** Um cliente pode fazer vários pedidos, mas um pedido pertence a apenas um cliente. *(O mais comum).*
+  * **N:M (Muitos para Muitos):** Um pedido pode ter vários produtos, e um produto pode estar em vários pedidos. *(Exige a criação de uma tabela intermediária).*
 
-## 3. Mapeamento: Modelo para Banco de Dados
+### Identidade: O papel das Chaves
+Para que o relacionamento funcione no banco de dados físico, utilizamos chaves:
+* **Chave Primária (PK):** O identificador único de uma linha dentro de uma tabela. Nunca se repete e não pode ser nulo.
+* **Chave Estrangeira (FK):** Uma coluna em uma tabela que faz referência à Chave Primária de outra tabela. É ela que cria o "link" entre os dados.
 
-Ao converter o modelo lógico para um banco de dados físico, seguimos regras rigorosas de conversão:
+## 3. O Mundo de Analytics: Modelagem Dimensional
 
-| Elemento lógico | Elemento físico | Descrição |
-|---|---|---|
-| **Entidade** | Tabela | Cada entidade do modelo lógico é convertida em uma tabela. |
-| **Atributo** | Coluna | Tornam-se as colunas da tabela, com tipos de dados definidos. |
-| **Relacionamento**| Chave | Implementados usando Chaves Primárias (PK) e Estrangeiras (FK). |
+Quando movemos os dados para o Data Warehouse (OLAP), abandonamos as regras rígidas de normalização em favor da **performance de leitura**. Aqui, dividimos o mundo em duas categorias de tabelas.
 
-## 4. O Mundo de Analytics e Esquema Estrela
+### Tabelas Fato
+Guardam os eventos que aconteceram no negócio. Elas crescem rapidamente de forma vertical (muitas linhas).
+* **O que contêm:** Métricas quantitativas (quantidades, valores, descontos) e as Chaves Estrangeiras (FKs).
+* **Exemplo:** `Fato_Vendas`, `Fato_Cliques_Site`, `Fato_Movimentacao_Estoque`.
 
-Saindo das transações diárias, entramos no *Data Warehouse*. A **modelagem dimensional** permite "fatiar" (*slice and dice*) os dados por diferentes perspectivas de negócios.
+### Tabelas Dimensão
+Fornecem o contexto para os fatos. Ajudam a responder *Quem, O que, Onde, Quando e Por quê*. Elas crescem horizontalmente (muitas colunas detalhadas).
+* **O que contêm:** Atributos descritivos de texto (nomes, categorias, regiões).
+* **Exemplo:** `Dim_Cliente`, `Dim_Produto`, `Dim_Tempo`.
 
-- **Tabela Fato:** Armazena as métricas e eventos (ex: Quantidade Vendida, Receita Total). Contém as chaves estrangeiras.
-- **Tabela Dimensão:** Fornece o contexto descritivo para os fatos (Quem, O que, Onde, Quando).
-- **Granularidade:** É o nível de detalhe de uma única linha da Tabela Fato (ex: 1 linha = 1 item de um pedido).
+### Star Schema vs. Snowflake
+* **Esquema Estrela (Star Schema):** Uma Tabela Fato central conectada diretamente a várias Dimensões desnormalizadas. Excelente para performance, pois exige apenas 1 nível de `JOIN`.
+* **Esquema Floco de Neve (Snowflake):** As Tabelas Dimensão são normalizadas (ex: A `Dim_Produto` se liga a uma `Dim_Categoria`). Economiza espaço em disco, mas exige múltiplos `JOINs`, deixando as consultas mais lentas.
 
-O **Esquema Estrela (Star Schema)** é o design mais comum para isso: uma única Tabela Fato no centro, com múltiplas Tabelas Dimensão ligadas diretamente a ela nas pontas. Isso minimiza `joins` complexos, acelerando consultas de agregação.
+## 4. Prática: Diagramas como Código (graphviz)
 
-## 5. Prática: Diagramas como Código (graphviz)
+Para documentar nossa modelagem sem depender de ferramentas visuais pagas ou arquivos de imagem difíceis de versionar no Git, utilizamos o conceito de *Diagrams as Code*.
 
-Na prática desta semana, desenhamos os modelos para o domínio de E-commerce. Para garantir um visual profissional, reprodutível e versionável, utilizamos a biblioteca Python `graphviz`.
-
-O método utiliza "Diagramas como Código", injetando tabelas HTML dentro dos nós do grafo e usando o método `edge` para criar os relacionamentos (chaves estrangeiras):
+O script abaixo utiliza a biblioteca `graphviz` para desenhar um esquema estrela simples. Note como utilizamos tabelas HTML injetadas nos nós para formatar visualmente as entidades.
 
 ```python
 import graphviz
 
-# Inicializa o diagrama
+# 1. Inicializa o diagrama direcionado (Digraph)
 dot = graphviz.Digraph('StarSchema', node_attr={'shape': 'plaintext'})
 
-# Criando a Tabela Fato
+# 2. Criando a Tabela Fato no centro
+# A tag PORT define a âncora visual onde a seta do relacionamento vai conectar
 dot.node('FatoVendas', '''<
 <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
-  <TR><TD BGCOLOR="lightgray"><B>Fato_Vendas</B></TD></TR>
+  <TR><TD BGCOLOR="#ffcccb"><B>Fato_Vendas</B></TD></TR>
   <TR><TD PORT="fk_tempo">id_tempo (FK)</TD></TR>
   <TR><TD PORT="fk_produto">id_produto (FK)</TD></TR>
   <TR><TD>quantidade_vendida</TD></TR>
   <TR><TD>valor_total</TD></TR>
 </TABLE>>''')
 
-# Criando uma Tabela Dimensão
+# 3. Criando uma Tabela Dimensão
 dot.node('DimProduto', '''<
 <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
-  <TR><TD BGCOLOR="lightblue"><B>Dim_Produto</B></TD></TR>
+  <TR><TD BGCOLOR="#add8e6"><B>Dim_Produto</B></TD></TR>
   <TR><TD PORT="pk_produto">id_produto (PK)</TD></TR>
   <TR><TD>nome_produto</TD></TR>
   <TR><TD>categoria</TD></TR>
+  <TR><TD>marca</TD></TR>
 </TABLE>>''')
 
-# Criando o relacionamento (Join)
-dot.edge('FatoVendas:fk_produto', 'DimProduto:pk_produto')
+# 4. Criando o relacionamento (Aresta / Edge)
+# O formato é 'Origem:porta', 'Destino:porta'
+dot.edge('FatoVendas:fk_produto', 'DimProduto:pk_produto', label='1:N')
 
-# Renderiza a imagem
-dot.render('esquema_estrela', format='png')
+# 5. Renderiza a imagem e salva como 'modelo_vendas.png'
+dot.render('modelo_vendas', format='png')
